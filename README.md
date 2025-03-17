@@ -55,9 +55,12 @@ OpenRecon/
 │   │── example_inpainting.py
 │   │── example_filters.py
 │
-│── docs/                    # Documentation
-│
 │── tests/                   # Unit tests
+│   │── test_mart.py
+│   │── test_denoising.py
+│   │── test_inpainting.py
+│
+│── docs/                    # Documentation
 │
 │── LICENSE                  # Open-source license (MIT)
 │── README.md                # Project documentation
@@ -73,10 +76,22 @@ OpenRecon/
 from openrecon.mart_reconstruction import MARTReconstruction
 import numpy as np
 
-projections = np.random.rand(64, 64)  # Simulated CT projections
-reconstructor = MARTReconstruction(num_iterations=10)
-reconstructed_image = reconstructor.reconstruct(projections)
-reconstructor.visualize_reconstruction(reconstructed_image)
+class MARTReconstruction:
+    def __init__(self, num_iterations=10):
+        self.num_iterations = num_iterations
+
+    def reconstruct(self, projections):
+        reconstructed_image = np.ones_like(projections)
+        for _ in range(self.num_iterations):
+            reconstructed_image *= projections / (np.sum(reconstructed_image, axis=0) + 1e-8)
+        return reconstructed_image
+
+    def visualize_reconstruction(self, image):
+        import matplotlib.pyplot as plt
+        plt.imshow(image, cmap='gray')
+        plt.title("Reconstructed Image")
+        plt.colorbar()
+        plt.show()
 ```
 
 ### **2️⃣ Apply AI-Based Denoising**
@@ -84,10 +99,47 @@ reconstructor.visualize_reconstruction(reconstructed_image)
 from openrecon.gan_denoising import DenoisingModel
 import torch
 
-model = DenoisingModel()
-model.load_pretrained("models/denoising_model.pth")
-noisy_image = torch.randn(1, 1, 64, 64)
-denosed_image = model(noisy_image)
+class DenoisingModel:
+    def __init__(self):
+        self.model = torch.nn.Sequential(
+            torch.nn.Conv2d(1, 16, kernel_size=3, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(16, 1, kernel_size=3, padding=1)
+        )
+
+    def forward(self, x):
+        return self.model(x)
+
+    def load_pretrained(self, model_path):
+        self.model.load_state_dict(torch.load(model_path))
+```
+
+### **3️⃣ Inpainting Missing Data**
+```python
+from openrecon.inpainting import InpaintingModel
+import torch
+
+class InpaintingModel:
+    def __init__(self):
+        self.model = torch.nn.Sequential(
+            torch.nn.Conv2d(1, 16, kernel_size=3, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(16, 1, kernel_size=3, padding=1)
+        )
+
+    def forward(self, x, mask):
+        x = x * mask  # Apply mask for inpainting simulation
+        return self.model(x)
+```
+
+### **4️⃣ Apply Image Filters**
+```python
+from openrecon.filters import apply_gaussian_filter, apply_median_filter
+import numpy as np
+
+image = np.random.rand(256, 256)
+gaussian_filtered = apply_gaussian_filter(image, sigma=1.5)
+median_filtered = apply_median_filter(image, size=3)
 ```
 
 ---
